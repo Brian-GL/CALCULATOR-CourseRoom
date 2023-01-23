@@ -1,9 +1,11 @@
 package entities
 
-type TareaImagenesEntregadasObtenerEntity struct {
-	Nombre    string
-	Archivo   string
-	Extension string
-	Estatus   *string
-	IdUsuario int
+type CalculatorInformacionTareaObtenerEntity struct {
+	PromedioGeneral         float32
+	PuntualidadGeneral      float32
+	PromedioCurso           float32
+	PuntualidadCurso        float32
+	VarianzaCalificacion    *float32
+	VarianzaPuntualidad     *float32
+	NumeroTareasCalificadas *int
 }
