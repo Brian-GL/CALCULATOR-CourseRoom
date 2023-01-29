@@ -41,7 +41,7 @@ func NewRPCServer() *RPCServer {
 	return &RPCServer{DB: db, SECRET_TOKEN: SECRET_TOKEN}
 }
 
-func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel, reply *byte) error {
+func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel, reply *any) error {
 
 	// Validar que el token sea el correcto:
 
@@ -56,7 +56,6 @@ func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel,
 		fmt.Println(estadisticasUsuario.NumeroTareasCalificadas)
 
 		//Llamar script de matlab
-
 	}
 
 	return nil
