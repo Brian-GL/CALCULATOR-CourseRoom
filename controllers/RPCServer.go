@@ -5,7 +5,6 @@ import (
 	"calculator-courseroom/entities"
 	"calculator-courseroom/infrastructure"
 	"calculator-courseroom/models"
-	"fmt"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -47,13 +46,30 @@ func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel,
 
 	if server.SECRET_TOKEN == model.SECRET_TOKEN {
 		future := async.Exec(func() interface{} {
-			return infrastructure.TareaInformacionCalificacionGetAsync(server.DB, model)
+			return infrastructure.InformacionDesempenoUsuarioGetAsync(server.DB, model)
 		})
 
 		//Obtener las estadisticas iniciales del usuario:
-		estadisticasUsuario := future.Await().(entities.CalculatorInformacionTareaObtenerEntity)
+		estadisticasUsuario := future.Await().([]entities.CalculatorInformacionDesempenoObtenerEntity)
 
-		fmt.Println(estadisticasUsuario.NumeroTareasCalificadas)
+		if estadisticasUsuario != nil {
+			if len(estadisticasUsuario) > 0 {
+
+				var array_calificaciones_x []float32
+				var array_calificaciones_y []float32
+				var array_puntualidades_x []float32
+				var array_puntualidades_y []float32
+
+				for _, value := range estadisticasUsuario {
+
+					array_calificaciones_x = append(array_calificaciones_x, value.Calificacion)
+					array_calificaciones_y = append(array_calificaciones_y, value.ResultadoCalificacionCurso)
+					array_puntualidades_x = append(array_puntualidades_x, value.Puntualidad)
+					array_puntualidades_y = append(array_puntualidades_y, value.ResultadoPuntualidadCurso)
+				}
+
+			}
+		}
 
 		//Llamar script de matlab
 	}
