@@ -1,10 +1,14 @@
 package controllers
 
 import (
+	"bytes"
 	"calculator-courseroom/async"
 	"calculator-courseroom/entities"
 	"calculator-courseroom/infrastructure"
 	"calculator-courseroom/models"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -14,6 +18,7 @@ import (
 
 type RPCServer struct {
 	DB           *gorm.DB
+	BRIDGE       *string
 	SECRET_TOKEN string
 }
 
@@ -29,6 +34,7 @@ func NewRPCServer() *RPCServer {
 	password := os.Getenv("PASSWORD")
 	databaseName := os.Getenv("DATABASE")
 	SECRET_TOKEN := os.Getenv("SECRET_TOKEN")
+	BRIDGE := os.Getenv("BRIDGE")
 
 	dsn := "sqlserver://" + user + ":" + password + "@" + server + "?database=" + databaseName
 
@@ -37,7 +43,7 @@ func NewRPCServer() *RPCServer {
 		PrepareStmt:            true,
 	})
 
-	return &RPCServer{DB: db, SECRET_TOKEN: SECRET_TOKEN}
+	return &RPCServer{DB: db, BRIDGE: &BRIDGE, SECRET_TOKEN: SECRET_TOKEN}
 }
 
 func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel, reply *any) error {
@@ -60,18 +66,49 @@ func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel,
 				var array_puntualidades_x []float32
 				var array_puntualidades_y []float32
 
-				for _, value := range estadisticasUsuario {
+				for index, value := range estadisticasUsuario {
 
-					array_calificaciones_x = append(array_calificaciones_x, value.Calificacion)
+					array_calificaciones_x = append(array_calificaciones_x, (float32)(index))
 					array_calificaciones_y = append(array_calificaciones_y, value.ResultadoCalificacionCurso)
-					array_puntualidades_x = append(array_puntualidades_x, value.Puntualidad)
+					array_puntualidades_x = append(array_puntualidades_x, (float32)(index))
 					array_puntualidades_y = append(array_puntualidades_y, value.ResultadoPuntualidadCurso)
+				}
+
+				//Llamar script de matlab
+
+				modelBridge := models.BridgeModel{
+					X: array_calificaciones_x,
+					Y: array_calificaciones_y,
+				}
+
+				jsonValue, _ := json.Marshal(modelBridge)
+
+				resp, err := http.Post(*server.BRIDGE+"RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
+				if err != nil {
+					future = async.Exec(func() interface{} {
+						return infrastructure.CalculatorRespuestaRegistrarPostAsync(server.DB, 500, "Se presentó un error al conectar al bridge de CourseRoom Calculator")
+					})
+				} else {
+					defer resp.Body.Close()
+
+					body, err := ioutil.ReadAll(resp.Body)
+
+					if err != nil {
+						future = async.Exec(func() interface{} {
+							return infrastructure.CalculatorRespuestaRegistrarPostAsync(server.DB, 500, "Se presentó un error al leer la respuesta del bridge de CourseRoom Calculator")
+						})
+					} else {
+						var bridgeResponse entities.BridgeEntity
+						err = json.Unmarshal(body, &bridgeResponse)
+						future = async.Exec(func() interface{} {
+							return infrastructure.CalculatorRespuestaRegistrarPostAsync(server.DB, bridgeResponse.Codigo, "OK")
+						})
+					}
 				}
 
 			}
 		}
 
-		//Llamar script de matlab
 	}
 
 	return nil

@@ -23,7 +23,7 @@ func InformacionDesempenoUsuarioGetAsync(db *gorm.DB, model *models.TareaCalific
 	return nil
 }
 
-func CalculatorRespuestaRegistrarPostAsync(db *gorm.DB, codigo *int, mensaje *string) *entities.AccionEntity {
+func CalculatorRespuestaRegistrarPostAsync(db *gorm.DB, codigo int, mensaje string) *entities.AccionEntity {
 	if db != nil {
 		var resultCalculator *entities.AccionEntity
 		exec := "EXEC dbo.CalculatorRespuesta_Registrar @Codigo = ?, @Mensaje = ?"
