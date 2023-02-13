@@ -1,6 +1,7 @@
 package entities
 
 type BridgeEntity struct {
-	Codigo int `json:"codigo"`
-	Data   any `json:"data"`
+	Codigo    int     `json:"codigo"`
+	Mensaje   string  `json:"mensaje"`
+	Resultado float64 `json:"resultado"`
 }

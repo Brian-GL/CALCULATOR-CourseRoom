@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 )
@@ -25,7 +24,7 @@ type RPCServer struct {
 func NewRPCServer() *RPCServer {
 
 	// Cargar archivo .env
-	_ = godotenv.Load(".env")
+	//godotenv.Load(".env")
 
 	//Cargar variables:
 
@@ -63,18 +62,14 @@ func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel,
 
 				var array_calificaciones_x []float32
 				var array_calificaciones_y []float32
-				var array_puntualidades_x []float32
-				var array_puntualidades_y []float32
 
-				for index, value := range estadisticasUsuario {
+				for _, value := range estadisticasUsuario {
 
-					array_calificaciones_x = append(array_calificaciones_x, (float32)(index))
-					array_calificaciones_y = append(array_calificaciones_y, value.ResultadoCalificacionCurso)
-					array_puntualidades_x = append(array_puntualidades_x, (float32)(index))
-					array_puntualidades_y = append(array_puntualidades_y, value.ResultadoPuntualidadCurso)
+					array_calificaciones_x = append(array_calificaciones_x, float32(value.Indice))
+					array_calificaciones_y = append(array_calificaciones_y, value.Resultado)
 				}
 
-				//Llamar script de matlab
+				//Llamar script de matlab:
 
 				modelBridge := models.BridgeModel{
 					X: array_calificaciones_x,
@@ -83,32 +78,39 @@ func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel,
 
 				jsonValue, _ := json.Marshal(modelBridge)
 
+				//Llamar al bridge:
 				resp, err := http.Post(*server.BRIDGE+"RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
-				if err != nil {
-					future = async.Exec(func() interface{} {
-						return infrastructure.CalculatorRespuestaRegistrarPostAsync(server.DB, 500, "Se presentó un error al conectar al bridge de CourseRoom Calculator")
-					})
-				} else {
+
+				if err == nil {
+
 					defer resp.Body.Close()
 
 					body, err := ioutil.ReadAll(resp.Body)
 
-					if err != nil {
-						future = async.Exec(func() interface{} {
-							return infrastructure.CalculatorRespuestaRegistrarPostAsync(server.DB, 500, "Se presentó un error al leer la respuesta del bridge de CourseRoom Calculator")
-						})
-					} else {
+					if err == nil {
+
+						//Obtener respuesta del bride como json:
 						var bridgeResponse entities.BridgeEntity
 						err = json.Unmarshal(body, &bridgeResponse)
-						future = async.Exec(func() interface{} {
-							return infrastructure.CalculatorRespuestaRegistrarPostAsync(server.DB, bridgeResponse.Codigo, "OK")
-						})
+
+						if err == nil {
+
+							if bridgeResponse.Codigo > 0 {
+
+								//Si la respuesta es correcta actualizar el desempeño por lo que nos regresa el algoritmo inteligente:
+								modelDesempenoActualizar := models.UsuarioDesempenoActualizarInputModel{
+									IdDesempeno:                 model.IdDesempeno,
+									PrediccionCalificacionCurso: &bridgeResponse.Resultado,
+									RumboCalificacionCurso:      &bridgeResponse.Mensaje,
+								}
+
+								infrastructure.UsuarioDesempenoActualizarPutAsync(server.DB, &modelDesempenoActualizar)
+							}
+						}
 					}
 				}
-
 			}
 		}
-
 	}
 
 	return nil

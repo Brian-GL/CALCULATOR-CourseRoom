@@ -3,7 +3,6 @@ module calculator-courseroom
 go 1.19
 
 require (
-	github.com/joho/godotenv v1.4.0
 	gorm.io/driver/sqlserver v1.4.1
 	gorm.io/gorm v1.24.2
 )

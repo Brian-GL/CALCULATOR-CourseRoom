@@ -2,8 +2,6 @@ package models
 
 type UsuarioDesempenoActualizarInputModel struct {
 	IdDesempeno                 int
-	PrediccionCalificacionCurso *float32
+	PrediccionCalificacionCurso *float64
 	RumboCalificacionCurso      *string
-	PrediccionPuntualidadCurso  *float32
-	RumboPuntualidadCurso       *string
 }

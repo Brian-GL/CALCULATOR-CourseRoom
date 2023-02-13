@@ -9,38 +9,32 @@ import (
 
 func InformacionDesempenoUsuarioGetAsync(db *gorm.DB, model *models.TareaCalificacionInputModel) []entities.CalculatorInformacionDesempenoObtenerEntity {
 
+	var resultado []entities.CalculatorInformacionDesempenoObtenerEntity
+
 	if db != nil {
 
-		var resultado []entities.CalculatorInformacionDesempenoObtenerEntity
-
-		exec := "EXEC dbo.CalculatorInformacionDesempeo_Obtener @IdUsuario = ?"
+		exec := "EXEC dbo.CalculatorInformacionDesempeno_Obtener @IdUsuario = ?"
 
 		db.Raw(exec, model.IdUsuario).Scan(&resultado)
-
-		return resultado
 	}
 
-	return nil
+	return resultado
 }
 
-func CalculatorRespuestaRegistrarPostAsync(db *gorm.DB, codigo int, mensaje string) *entities.AccionEntity {
+func UsuarioDesempenoActualizarPutAsync(db *gorm.DB, model *models.UsuarioDesempenoActualizarInputModel) entities.AccionEntity {
+
+	var resultado entities.AccionEntity
 	if db != nil {
-		var resultCalculator *entities.AccionEntity
-		exec := "EXEC dbo.CalculatorRespuesta_Registrar @Codigo = ?, @Mensaje = ?"
-		db.Raw(exec, codigo, mensaje).Scan(&resultCalculator)
-		return resultCalculator
+
+		exec := "EXEC dbo.UsuarioDesempeno_Actualizar @IdDesempeno = ?, @PrediccionCalificacionCurso = ?, @RumboCalificacionCurso = ?"
+		db.Raw(exec, model.IdDesempeno, model.PrediccionCalificacionCurso, model.RumboCalificacionCurso).Scan(&resultado)
+
+	} else {
+		resultado = entities.AccionEntity{
+			Codigo:  -1,
+			Mensaje: "La base de datos no es accesible por el momento",
+		}
 	}
 
-	return nil
-}
-
-func UsuarioDesempenoActualizarPutAsync(db *gorm.DB, model *models.UsuarioDesempenoActualizarInputModel) *entities.AccionEntity {
-	if db != nil {
-		var resultCalculator *entities.AccionEntity
-		exec := "EXEC dbo.UsuarioDesempeno_Actualizar @IdDesempeno = ?, @PrediccionCalificacionCurso = ?, @RumboCalificacionCurso = ?, @PrediccionPuntualidadCurso = ?, @RumboPuntualidadCurso = ?"
-		db.Raw(exec, model.IdDesempeno, model.PrediccionCalificacionCurso, model.RumboCalificacionCurso, model.PrediccionPuntualidadCurso, model.RumboPuntualidadCurso).Scan(&resultCalculator)
-		return resultCalculator
-	}
-
-	return nil
+	return resultado
 }
