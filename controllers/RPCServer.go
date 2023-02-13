@@ -7,7 +7,7 @@ import (
 	"calculator-courseroom/infrastructure"
 	"calculator-courseroom/models"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -85,7 +85,7 @@ func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel,
 
 					defer resp.Body.Close()
 
-					body, err := ioutil.ReadAll(resp.Body)
+					body, err := io.ReadAll(resp.Body)
 
 					if err == nil {
 
