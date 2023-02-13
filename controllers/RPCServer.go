@@ -3,7 +3,6 @@ package controllers
 import (
 	"bytes"
 	"calculator-courseroom/async"
-	"calculator-courseroom/entities"
 	"calculator-courseroom/infrastructure"
 	"calculator-courseroom/models"
 	"encoding/json"
@@ -55,7 +54,7 @@ func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel,
 		})
 
 		//Obtener las estadisticas iniciales del usuario:
-		estadisticasUsuario := future.Await().([]entities.CalculatorInformacionDesempenoObtenerEntity)
+		estadisticasUsuario := future.Await().([]models.CalculatorInformacionDesempenoObtenerEntity)
 
 		if estadisticasUsuario != nil {
 			if len(estadisticasUsuario) > 0 {
@@ -90,7 +89,7 @@ func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel,
 					if err == nil {
 
 						//Obtener respuesta del bride como json:
-						var bridgeResponse entities.BridgeEntity
+						var bridgeResponse models.BridgeEntity
 						err = json.Unmarshal(body, &bridgeResponse)
 
 						if err == nil {

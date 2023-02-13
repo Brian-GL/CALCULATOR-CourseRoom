@@ -1,15 +1,14 @@
 package infrastructure
 
 import (
-	"calculator-courseroom/entities"
 	"calculator-courseroom/models"
 
 	"gorm.io/gorm"
 )
 
-func InformacionDesempenoUsuarioGetAsync(db *gorm.DB, model *models.TareaCalificacionInputModel) []entities.CalculatorInformacionDesempenoObtenerEntity {
+func InformacionDesempenoUsuarioGetAsync(db *gorm.DB, model *models.TareaCalificacionInputModel) []models.CalculatorInformacionDesempenoObtenerEntity {
 
-	var resultado []entities.CalculatorInformacionDesempenoObtenerEntity
+	var resultado []models.CalculatorInformacionDesempenoObtenerEntity
 
 	if db != nil {
 
@@ -21,16 +20,16 @@ func InformacionDesempenoUsuarioGetAsync(db *gorm.DB, model *models.TareaCalific
 	return resultado
 }
 
-func UsuarioDesempenoActualizarPutAsync(db *gorm.DB, model *models.UsuarioDesempenoActualizarInputModel) entities.AccionEntity {
+func UsuarioDesempenoActualizarPutAsync(db *gorm.DB, model *models.UsuarioDesempenoActualizarInputModel) models.AccionEntity {
 
-	var resultado entities.AccionEntity
+	var resultado models.AccionEntity
 	if db != nil {
 
 		exec := "EXEC dbo.UsuarioDesempeno_Actualizar @IdDesempeno = ?, @PrediccionCalificacionCurso = ?, @RumboCalificacionCurso = ?"
 		db.Raw(exec, model.IdDesempeno, model.PrediccionCalificacionCurso, model.RumboCalificacionCurso).Scan(&resultado)
 
 	} else {
-		resultado = entities.AccionEntity{
+		resultado = models.AccionEntity{
 			Codigo:  -1,
 			Mensaje: "La base de datos no es accesible por el momento",
 		}
