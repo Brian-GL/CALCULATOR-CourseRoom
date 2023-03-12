@@ -1,160 +1,104 @@
 package main
 
 import (
-	"bytes"
-	"calculator-courseroom/async"
-	"calculator-courseroom/infrastructure"
-	"calculator-courseroom/models"
-	"encoding/json"
+	"calculator-courseroom/rpcserver"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/rpc"
 	"os"
 	"time"
 
-	"gorm.io/driver/sqlserver"
-	"gorm.io/gorm"
+	"github.com/joho/godotenv"
+	jsoniter "github.com/json-iterator/go"
 )
 
-type RPCServer struct {
-	DB           *gorm.DB
-	BRIDGE       *string
-	SECRET_TOKEN string
-}
+func main() {
 
-func NewRPCServer() *RPCServer {
+	//Cargar variables de entorno:
+	godotenv.Load(".env")
 
-	// Cargar archivo .env
-	//godotenv.Load(".env")
+	jsonIter := jsoniter.ConfigCompatibleWithStandardLibrary
+	secretToken := os.Getenv("SECRET_TOKEN")
 
-	//Cargar variables:
+	rpcServer := rpcserver.NewRpcServer()
+	rpc.Register(rpcServer)
 
-	server := os.Getenv("SERVER")
-	user := os.Getenv("USER")
-	password := os.Getenv("PASSWORD")
-	databaseName := os.Getenv("DATABASE")
-	SECRET_TOKEN := os.Getenv("SECRET_TOKEN")
-	BRIDGE := os.Getenv("BRIDGE")
+	//Home page:
+	http.HandleFunc("/rpc", Index)
 
-	dsn := "sqlserver://" + user + ":" + password + "@" + server + "?database=" + databaseName
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 
-	db, _ := gorm.Open(sqlserver.Open(dsn), &gorm.Config{
-		SkipDefaultTransaction: true,
-		PrepareStmt:            true,
-	})
+		defer req.Body.Close()
 
-	return &RPCServer{DB: db, BRIDGE: &BRIDGE, SECRET_TOKEN: SECRET_TOKEN}
-}
+		// Cabecera de respuesta:
+		w.Header().Add("Content-Type", "application/json")
 
-func (server *RPCServer) Calificacion(model *models.TareaCalificacionInputModel, reply *any) error {
+		// Obtener token
+		token := req.Header.Get("Authorization")
 
-	// Validar que el token sea el correcto:
+		// Validar que el token no se encuentre vacío:
+		if token == "" {
 
-	if server.SECRET_TOKEN == model.SECRET_TOKEN {
+			jsonBytes, err := jsonIter.Marshal("El token es necesario para acceder a este recurso")
 
-		future := async.Exec(func() interface{} {
-			return infrastructure.InformacionDesempenoUsuarioGetAsync(server.DB, model)
-		})
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write(jsonBytes)
+			}
 
-		//Obtener las estadisticas iniciales del usuario:
-		estadisticasUsuario := future.Await().([]models.CalculatorInformacionDesempenoObtenerEntity)
+			return
+		}
 
-		if estadisticasUsuario != nil {
-			if len(estadisticasUsuario) > 0 {
+		// Validar que el token sea el correcto:
 
-				var array_calificaciones_x []float32
-				var array_calificaciones_y []float32
+		if token == secretToken {
 
-				for _, value := range estadisticasUsuario {
+			switch req.Method {
 
-					array_calificaciones_x = append(array_calificaciones_x, float32(value.Indice))
-					array_calificaciones_y = append(array_calificaciones_y, value.Resultado)
+			case "POST":
+				{
+					rpcServerRequest := rpcserver.NewRpcRequest(req.Body)
+					res := rpcServerRequest.Call()
+					io.Copy(w, res)
 				}
 
-				//Llamar script de matlab:
+			default:
+				{
+					jsonBytes, err := jsonIter.Marshal("Ruta inválida")
 
-				modelBridge := models.BridgeModel{
-					X: array_calificaciones_x,
-					Y: array_calificaciones_y,
-				}
-
-				jsonValue, _ := json.Marshal(modelBridge)
-
-				//Llamar al bridge:
-				resp, err := http.Post(*server.BRIDGE+"RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
-
-				if err == nil {
-
-					defer resp.Body.Close()
-
-					body, err := io.ReadAll(resp.Body)
-
-					if err == nil {
-
-						//Obtener respuesta del bride como json:
-						var bridgeResponse models.BridgeEntity
-						err = json.Unmarshal(body, &bridgeResponse)
-
-						if err == nil {
-
-							if bridgeResponse.Codigo > 0 {
-
-								//Si la respuesta es correcta actualizar el desempeño por lo que nos regresa el algoritmo inteligente:
-								modelDesempenoActualizar := models.UsuarioDesempenoActualizarInputModel{
-									IdDesempeno:                 model.IdDesempeno,
-									PrediccionCalificacionCurso: &bridgeResponse.Resultado,
-									RumboCalificacionCurso:      &bridgeResponse.Mensaje,
-								}
-
-								infrastructure.UsuarioDesempenoActualizarPutAsync(server.DB, &modelDesempenoActualizar)
-							}
-						}
+					if err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						w.Write([]byte(err.Error()))
+					} else {
+						w.WriteHeader(http.StatusNotImplemented)
+						w.Write(jsonBytes)
 					}
 				}
 			}
+
+		} else {
+
+			jsonBytes, err := jsonIter.Marshal("Token inválido")
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write(jsonBytes)
+			}
 		}
-	}
+	})
 
-	return nil
-}
+	fmt.Println("\nCourseRoom Calculator Opened At " + time.Now().Format("2006-01-02 15:04:05 Monday"))
 
-func main() {
-	fmt.Print("\033[H\033[2J")
-	go Servering()
-	fmt.Scanln()
-	fmt.Print("\033[H\033[2J")
-}
-
-func Servering() {
-
-	rpcServer := NewRPCServer()
-	rpc.Register(rpcServer)
-
-	server_rpc, error := net.Listen("tcp", ":2023")
-	if error != nil {
-		fmt.Println("Found Error : ", error.Error())
-		server_rpc.Close()
-		return
-	}
-
-	fmt.Println("\nCourseRoom Calculator Opened At " + time.Now().Format("Monday 2006-01-02 15:04"))
-
-	//Home page:
-	//http.HandleFunc("/rpc", Index)
-
-	defer server_rpc.Close()
-
-	for {
-		fmt.Println("Listening...")
-		client, err_or := server_rpc.Accept()
-		if err_or != nil {
-			fmt.Println("Found Error: ", err_or)
-			continue
-		}
-		fmt.Println("Connected Client With Address:", client.RemoteAddr())
-		go rpc.ServeConn(client)
+	err := http.ListenAndServe(":1414", nil)
+	if err != nil {
+		panic(err)
 	}
 }
 
