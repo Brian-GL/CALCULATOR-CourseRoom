@@ -9,14 +9,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
 )
 
 func main() {
 
 	//Cargar variables de entorno:
-	godotenv.Load(".env")
+	//godotenv.Load(".env")
 
 	jsonIter := jsoniter.ConfigCompatibleWithStandardLibrary
 	secretToken := os.Getenv("SECRET_TOKEN")

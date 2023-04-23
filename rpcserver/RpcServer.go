@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 )
@@ -24,7 +23,7 @@ type RpcServer struct {
 
 func NewRpcServer() *RpcServer {
 
-	godotenv.Load(".env")
+	//godotenv.Load(".env")
 
 	//Cargar variables:
 
