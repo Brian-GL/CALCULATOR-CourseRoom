@@ -8,6 +8,7 @@ import (
 	"calculator-courseroom/models"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -63,51 +64,76 @@ func (server *RpcServer) Calificacion(model *models.TareaCalificacionInputModel,
 			array_calificaciones_y = append(array_calificaciones_y, value.Resultado)
 		}
 
-		//Llamar script de matlab:
+		if len(estadisticasUsuario) == 1 {
 
-		modelBridge := models.BridgeModel{
-			X: array_calificaciones_x,
-			Y: array_calificaciones_y,
-		}
+			desempeno := estadisticasUsuario[0]
+			prediccionCalificacion := desempeno.Resultado
+			rumboCalificacionCurso := fmt.Sprintf("%f", desempeno.Resultado) + "x"
 
-		jsonValue, _ := json.Marshal(modelBridge)
+			//Si la respuesta es correcta actualizar el desempeño por lo que nos regresa el algoritmo inteligente:
+			modelDesempenoActualizar := models.UsuarioDesempenoActualizarInputModel{
+				IdDesempeno:                 model.IdDesempeno,
+				PrediccionCalificacionCurso: &prediccionCalificacion,
+				RumboCalificacionCurso:      &rumboCalificacionCurso,
+			}
 
-		//Llamar al bridge:
-		resp, err := http.Post(*server.BRIDGE+"RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
+			future = async.Exec(func() interface{} {
+				return infrastructure.UsuarioDesempenoActualizarPutAsync(server.DB, &modelDesempenoActualizar)
+			})
 
-		if err == nil {
+			future.Await()
 
-			defer resp.Body.Close()
+			*reply = "OK"
+		} else {
 
-			body, err := io.ReadAll(resp.Body)
+			//Llamar script de matlab:
+
+			modelBridge := models.BridgeModel{
+				X: array_calificaciones_x,
+				Y: array_calificaciones_y,
+			}
+
+			jsonValue, _ := json.Marshal(modelBridge)
+
+			//Llamar al bridge:
+			resp, err := http.Post(*server.BRIDGE+"RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
 
 			if err == nil {
 
-				//Obtener respuesta del bride como json:
-				var bridgeResponse entities.BridgeEntity
-				err = json.Unmarshal(body, &bridgeResponse)
+				defer resp.Body.Close()
+
+				body, err := io.ReadAll(resp.Body)
 
 				if err == nil {
 
-					if bridgeResponse.Codigo > 0 {
+					//Obtener respuesta del bride como json:
+					var bridgeResponse entities.BridgeEntity
+					err = json.Unmarshal(body, &bridgeResponse)
 
-						//Si la respuesta es correcta actualizar el desempeño por lo que nos regresa el algoritmo inteligente:
-						modelDesempenoActualizar := models.UsuarioDesempenoActualizarInputModel{
-							IdDesempeno:                 model.IdDesempeno,
-							PrediccionCalificacionCurso: &bridgeResponse.Resultado,
-							RumboCalificacionCurso:      &bridgeResponse.Mensaje,
+					if err == nil {
+
+						if bridgeResponse.Codigo > 0 {
+
+							//Si la respuesta es correcta actualizar el desempeño por lo que nos regresa el algoritmo inteligente:
+							modelDesempenoActualizar := models.UsuarioDesempenoActualizarInputModel{
+								IdDesempeno:                 model.IdDesempeno,
+								PrediccionCalificacionCurso: &bridgeResponse.Resultado,
+								RumboCalificacionCurso:      &bridgeResponse.Mensaje,
+							}
+
+							future = async.Exec(func() interface{} {
+								return infrastructure.UsuarioDesempenoActualizarPutAsync(server.DB, &modelDesempenoActualizar)
+							})
+
+							future.Await()
+
+							*reply = bridgeResponse.Mensaje
+
+						} else {
+							return errors.New(bridgeResponse.Mensaje)
 						}
-
-						future = async.Exec(func() interface{} {
-							return infrastructure.UsuarioDesempenoActualizarPutAsync(server.DB, &modelDesempenoActualizar)
-						})
-
-						future.Await()
-
-						*reply = bridgeResponse.Mensaje
-
 					} else {
-						return errors.New(bridgeResponse.Mensaje)
+						return err
 					}
 				} else {
 					return err
@@ -115,8 +141,6 @@ func (server *RpcServer) Calificacion(model *models.TareaCalificacionInputModel,
 			} else {
 				return err
 			}
-		} else {
-			return err
 		}
 	} else {
 		return errors.New("no se encontraron registros")

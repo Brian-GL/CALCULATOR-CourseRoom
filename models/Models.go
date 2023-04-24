@@ -12,7 +12,7 @@ type BridgeModel struct {
 
 type UsuarioDesempenoActualizarInputModel struct {
 	IdDesempeno                 int
-	PrediccionCalificacionCurso *float64
+	PrediccionCalificacionCurso *float32
 	RumboCalificacionCurso      *string
 }
 

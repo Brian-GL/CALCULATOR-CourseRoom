@@ -21,7 +21,7 @@ type AccionEntity struct {
 type BridgeEntity struct {
 	Codigo    int     `json:"codigo"`
 	Mensaje   string  `json:"mensaje"`
-	Resultado float64 `json:"resultado"`
+	Resultado float32 `json:"resultado"`
 }
 
 type CalculatorInformacionDesempenoObtenerEntity struct {
