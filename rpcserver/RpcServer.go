@@ -96,7 +96,7 @@ func (server *RpcServer) Calificacion(model *models.TareaCalificacionInputModel,
 			jsonValue, _ := json.Marshal(modelBridge)
 
 			//Llamar al bridge:
-			resp, err := http.Post(*server.BRIDGE+"RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
+			resp, err := http.Post(*server.BRIDGE+"/RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
 
 			if err == nil {
 
