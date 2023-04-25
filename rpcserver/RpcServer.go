@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
@@ -95,8 +96,12 @@ func (server *RpcServer) Calificacion(model *models.TareaCalificacionInputModel,
 
 			jsonValue, _ := json.Marshal(modelBridge)
 
+			client := http.Client{
+				Timeout: 10 * time.Second,
+			}
+
 			//Llamar al bridge:
-			resp, err := http.Post(*server.BRIDGE+"/RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
+			resp, err := client.Post(*server.BRIDGE+"/RegresionPolinomial", "application/json", bytes.NewBuffer(jsonValue))
 
 			if err == nil {
 

@@ -25,6 +25,7 @@ type BridgeEntity struct {
 }
 
 type CalculatorInformacionDesempenoObtenerEntity struct {
-	Indice    int
-	Resultado float32
+	Indice     int
+	Resultado  float32
+	Prediccion float32
 }
