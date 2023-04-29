@@ -97,7 +97,7 @@ func (server *RpcServer) Calificacion(model *models.TareaCalificacionInputModel,
 			jsonValue, _ := json.Marshal(modelBridge)
 
 			client := http.Client{
-				Timeout: 10 * time.Second,
+				Timeout: 10 * time.Minute,
 			}
 
 			//Llamar al bridge:
